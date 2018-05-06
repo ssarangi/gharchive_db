@@ -23,14 +23,16 @@ coloredlogs.install(level='DEBUG', logger=logger)
 
 BASE_URL = "http://data.gharchive.org/%s-%d.json.gz"
 
+
 def format_dataframe(df):
     # Normalize the columns
     actor = json_normalize(df.actor.tolist()).add_prefix('actor.')
-    org = json_normalize(df.org.fillna(-1).apply(lambda x: {} if x == -1 else x).tolist()).add_prefix('org.')
+    org = json_normalize(df.org.fillna(-1).apply(lambda x: {}
+                                                 if x == -1 else x).tolist()).add_prefix('org.')
     payload = json_normalize(df.payload.tolist()).add_prefix('payload.')
     repo = json_normalize(df.repo.tolist()).add_prefix('repo.')
 
-    df = pd.concat([df.drop(['actor', 'org', 'payload'], axis=1),
+    df = pd.concat([df.drop(['actor', 'org', 'payload', 'repo'], axis=1),
                     actor,
                     org,
                     payload,
@@ -41,10 +43,12 @@ def format_dataframe(df):
 
     return df
 
+
 def load_data(filename):
     logger.info("Loading File: %s" % filename)
     df = pd.read_json(filename, lines=True)
     return format_dataframe(df)
+
 
 def download_file(url, dir):
     local_filename = dir + "/" + url.split('/')[-1]
@@ -55,6 +59,7 @@ def download_file(url, dir):
 
     return local_filename
 
+
 def parallelized_download(url):
     logger.info("Parallelized Download URL: %s" % url)
     gz_file = download_file(url, TMP_DIR)
@@ -64,6 +69,7 @@ def parallelized_download(url):
         df = format_dataframe(df)
         os.remove(gz_file)
         return df
+
 
 def load_files_for_date_range(start_date, end_date):
     if os.path.exists(TMP_DIR):
@@ -78,13 +84,18 @@ def load_files_for_date_range(start_date, end_date):
         suffix = date.strftime("%Y-%m-%d")
         logger.info("Downloading files for date: %s" % suffix)
         with mp.Pool(24) as p:
-            dfs = p.map(parallelized_download, [(BASE_URL % (suffix, hour)) for hour in range(0, 24)])
-            for df in dfs:
-                df.to_sql(TABLE_NAME, conn, if_exists='append')
+            dfs = p.map(parallelized_download, [
+                        (BASE_URL % (suffix, hour)) for hour in range(0, 24)])
+            # Merge all the df's
+            logger.info("Merging Dataframes")
+            joined_df = pd.concat(dfs)
+            logger.info("Writing to SQL")
+            joined_df.to_sql(TABLE_NAME, conn, if_exists='append')
 
         date = date + datetime.timedelta(days=1)
         logger.info("Sleeping for 1 second")
         time.sleep(1)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -109,6 +120,7 @@ def main():
             end_date = pd.to_datetime(end_date)
 
         load_files_for_date_range(start_date, end_date)
+
 
 if __name__ == "__main__":
     main()
