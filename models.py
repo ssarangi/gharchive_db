@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from dbmanager import Base
 
 URL_SIZE = 250
+EMAIL_SIZE = 100
 
 class Repository(Base):
     __tablename__ = "repositories"
@@ -54,9 +55,9 @@ class Repository(Base):
     notifications_url = Column(String(URL_SIZE))
     open_issues = Column(Integer())
     open_issues_count = Column(Integer())
-    # TODO: Implement Organization
+    organization_id = Column(Integer, ForeignKey('organizations.id'))
     # TODO: Implement Owner
-    # TODO: Implement Parent
+    parent_id = Column(Integer, ForeignKey('repositories.id'))
     # TODO: Implement Permissions
     private = Column(Boolean())
     pulls_url = Column(String(URL_SIZE))
@@ -79,15 +80,85 @@ class Repository(Base):
     watchers = Column(Integer())
     watchers_count = Column(Integer())
 
+class Plan(Base):
+    __tablename__ = 'plans'
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    collaborators = Column(Integer())
+    name = Column(String(100))
+    private_repos = Column(Integer())
+    space = Column(Integer())
 
+class Organization(Base):
+    __tablename__ = 'organizations'
 
+    avatar_url = Column(String(URL_SIZE))
+    billing_email = Column(String(EMAIL_SIZE))
+    blog = Column(String(URL_SIZE))
+    collaborators = Column(Integer())
+    company = Column(String(50))
+    created_at = Column(DateTime())
+    disk_usage = Column(Integer())
+    email = Column(String(EMAIL_SIZE))
+    events_url = Column(String(URL_SIZE))
+    followers = Column(Integer())
+    gravatar_id = Column(String(50))
+    html_url = Column(String(URL_SIZE))
+    id = Column(Integer(), primary_key=True)
+    location = Column(String(50))
+    login = Column(String(50))
+    members_url = Column(String(URL_SIZE))
+    name = Column(String(50))
+    owned_private_repos = Column(Integer())
+    plan_id = Column(Integer, ForeignKey('plans.id'))
+    private_gists = Column(Integer())
+    public_gists = Column(Integer())
+    public_members_url = Column(String(URL_SIZE))
+    public_repos = Column(Integer())
+    repos_url = Column(String(URL_SIZE))
+    total_private_repos = Column(Integer())
+    # TODO: Implement type
+    updated_at = Column(DateTime())
+    url = Column(String(URL_SIZE))
 
+class NamedUser(Base):
+    __tablename__ = "namedusers"
 
-
-
-
-
-
-
-
+    avatar_url = Column(String(URL_SIZE))
+    bio = Column(Text())
+    blog = Column(Text())
+    collaborators = Column(Integer())
+    company = Column(String())
+    contributions = Column(Integer())
+    created_at = Column(DateTime())
+    disk_usage = Column(Integer())
+    email = Column(String(EMAIL_SIZE))
+    events_url = Column(String(URL_SIZE))
+    followers = Column(Integer())
+    followers_url = Column(String(URL_SIZE))
+    following = Column(Integer())
+    following_url = Column(String(URL_SIZE))
+    gists_url = Column(String(URL_SIZE))
+    gravatar_id = Column(String(50))
+    hireable = Column(Boolean())
+    html_url = Column(String(URL_SIZE))
+    id = Column(Integer, primary_key=True)
+    location = Column(String(50))
+    login
+    name
+    organizations_url
+    owned_private_repos
+    permissions
+    plan
+    private_gists
+    public_gists
+    public_repos
+    received_events_url
+    repos_url
+    site_admin
+    starred_url
+    subscriptions_url
+    total_private_repos
+    type
+    updated_at
+    url
