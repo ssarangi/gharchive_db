@@ -32,10 +32,9 @@ def format_dataframe(df):
     payload = json_normalize(df.payload.tolist()).add_prefix('payload.')
     repo = json_normalize(df.repo.tolist()).add_prefix('repo.')
 
-    df = pd.concat([df.drop(['actor', 'org', 'payload', 'repo'], axis=1),
+    df = pd.concat([df.drop(['actor', 'org', 'repo'], axis=1),
                     actor,
                     org,
-                    payload,
                     repo], axis=1)
 
     for column in df.columns:
@@ -60,8 +59,8 @@ def download_file(url, dir):
     return local_filename
 
 
-def parallelized_download(url):
-    logger.info("Parallelized Download URL: %s" % url)
+def file_download(url):
+    logger.info("Download URL: %s" % url)
     gz_file = download_file(url, TMP_DIR)
     try:
         with gzip.open(gz_file) as gz:
@@ -75,7 +74,7 @@ def parallelized_download(url):
     os.remove(gz_file)
     return df
 
-def load_files_for_date_range(start_date, end_date, num_threads):
+def load_files_for_date_range(start_date, end_date, use_mt, num_threads):
     if os.path.exists(TMP_DIR):
         files = glob.glob(TMP_DIR + "/*")
         for f in files:
@@ -87,16 +86,22 @@ def load_files_for_date_range(start_date, end_date, num_threads):
     while date <= end_date:
         suffix = date.strftime("%Y-%m-%d")
         logger.info("Downloading files for date: %s" % suffix)
-        with mp.Pool(num_threads) as p:
-            dfs = p.map(parallelized_download, [
-                        (BASE_URL % (suffix, hour)) for hour in range(0, 24)])
-            p.close()
-            p.join()
-            # Merge all the df's
-            logger.info("Merging Dataframes")
-            joined_df = pd.concat(dfs)
-            logger.info("Writing to SQL")
-            joined_df.to_sql(TABLE_NAME, conn, if_exists='append')
+        if use_mt:
+            with mp.Pool(num_threads) as p:
+                logger.info("Parallelized Download")
+                dfs = p.map(file_download, [
+                            (BASE_URL % (suffix, hour)) for hour in range(0, 24)])
+                p.close()
+                p.join()
+        else:
+            logger.info("Single Threaded Download")
+            dfs = [file_download((BASE_URL % (suffix, hour))) for hour in range(0, 24)]
+
+        # Merge all the df's
+        logger.info("Merging Dataframes")
+        joined_df = pd.concat(dfs)
+        logger.info("Writing to SQL")
+        joined_df.to_sql(TABLE_NAME, conn, if_exists='append')
 
         date = date + datetime.timedelta(days=1)
         logger.info("Sleeping for 1 second")
@@ -108,6 +113,7 @@ def main():
     parser.add_argument("-filename", help="Filename to load")
     parser.add_argument("-start_date", help="Start Date")
     parser.add_argument("-end_date", help="End Date")
+    parser.add_argument("-use_mt", help="Use multithreading", default=False)
     parser.add_argument("-num_threads", help="Number of threads to launch", default=4)
     args = parser.parse_args()
 
@@ -126,7 +132,7 @@ def main():
         else:
             end_date = pd.to_datetime(end_date)
 
-        load_files_for_date_range(start_date, end_date, args.num_threads)
+        load_files_for_date_range(start_date, end_date, args.use_mt, args.num_threads)
 
 
 if __name__ == "__main__":

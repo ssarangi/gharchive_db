@@ -31,21 +31,21 @@ class RepoSortParamsEnum(Enum):
 
 class RepoQueryParams:
     def __init__(self):
-        self._params = []
+        self._params = dict()
         self._sort_param = None
 
     def add_param(self, key: RepoQueryParamsEnum, operator: RepoQueryParamsOperator, value: Union[str, int, bool]) -> 'RepoQueryParams':
-        query_str = key.name.lower() + ':'
+        query_str = ""
         if operator is not None and operator != RepoQueryParamsOperator.EQUALS:
             query_str += operator.value
         query_str += str(value).lower()
-        self._params.append(query_str)
+        self._params[key.name.lower()] = query_str
         return self
 
     def add_range_param(self, key: RepoQueryParamsEnum, value_lower: int, value_higher: int) -> 'RepoQueryParams':
-        query_str = key.name.lower() + ':%d..%d' % (value_lower, value_higher)
-        self._params.append(query_str)
+        query_str = '%d..%d' % (value_lower, value_higher)
+        self._params[key.name.lower()] = query_str
         return self
 
     def resolve(self):
-        return "+".join(self._params)
+        return self._params
