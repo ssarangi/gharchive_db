@@ -63,13 +63,17 @@ def download_file(url, dir):
 def parallelized_download(url):
     logger.info("Parallelized Download URL: %s" % url)
     gz_file = download_file(url, TMP_DIR)
-    with gzip.open(gz_file) as gz:
-        json_str = gzip.decompress(gz.read()).decode('utf-8')
-        df = pd.read_json(json_str, lines=True)
-        df = format_dataframe(df)
-        os.remove(gz_file)
-        return df
+    try:
+        with gzip.open(gz_file) as gz:
+            json_str = gzip.decompress(gz.read()).decode('utf-8')
+    except OSError:
+        with gzip.open(gz_file) as gz:    # Try opening the file as a regular file
+            json_str = gz.read().decode('utf-8')
 
+    df = pd.read_json(json_str, lines=True)
+    df = format_dataframe(df)
+    os.remove(gz_file)
+    return df
 
 def load_files_for_date_range(start_date, end_date):
     if os.path.exists(TMP_DIR):
