@@ -75,7 +75,7 @@ def parallelized_download(url):
     os.remove(gz_file)
     return df
 
-def load_files_for_date_range(start_date, end_date):
+def load_files_for_date_range(start_date, end_date, num_threads):
     if os.path.exists(TMP_DIR):
         files = glob.glob(TMP_DIR + "/*")
         for f in files:
@@ -87,9 +87,11 @@ def load_files_for_date_range(start_date, end_date):
     while date <= end_date:
         suffix = date.strftime("%Y-%m-%d")
         logger.info("Downloading files for date: %s" % suffix)
-        with mp.Pool(24) as p:
+        with mp.Pool(num_threads) as p:
             dfs = p.map(parallelized_download, [
                         (BASE_URL % (suffix, hour)) for hour in range(0, 24)])
+            p.close()
+            p.join()
             # Merge all the df's
             logger.info("Merging Dataframes")
             joined_df = pd.concat(dfs)
@@ -106,6 +108,7 @@ def main():
     parser.add_argument("-filename", help="Filename to load")
     parser.add_argument("-start_date", help="Start Date")
     parser.add_argument("-end_date", help="End Date")
+    parser.add_argument("-num_threads", help="Number of threads to launch", default=4)
     args = parser.parse_args()
 
     if (args.filename):
@@ -123,7 +126,7 @@ def main():
         else:
             end_date = pd.to_datetime(end_date)
 
-        load_files_for_date_range(start_date, end_date)
+        load_files_for_date_range(start_date, end_date, args.num_threads)
 
 
 if __name__ == "__main__":
